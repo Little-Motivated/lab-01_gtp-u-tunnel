@@ -1,0 +1,15 @@
+IndentWidth: 4
+SpaceAfterCStyleCast: false
+BreakBeforeBraces: Custom
+BraceWrapping:
+    AfterStruct: false
+    AfterFunction: false
+    SplitEmptyFunction: false
+    SplitEmptyRecord: false
+AllowShortFunctionsOnASingleLine: false
+SpacesBeforeTrailingComments: 2
+IndentGotoLabels: false
+SeparateDefinitionBlocks: Always
+InsertBraces: true
+AccessModifierOffset: -4
+ColumnLimit: 100
