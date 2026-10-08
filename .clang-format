@@ -6,7 +6,10 @@ BraceWrapping:
     AfterFunction: false
     SplitEmptyFunction: false
     SplitEmptyRecord: false
-AllowShortFunctionsOnASingleLine: false
+
+AllowShortFunctionsOnASingleLine: All
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+
 SpacesBeforeTrailingComments: 2
 IndentGotoLabels: false
 SeparateDefinitionBlocks: Always

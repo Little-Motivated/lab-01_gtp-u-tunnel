@@ -11,7 +11,7 @@ all: $(TARGET)
 $(TARGET): $(OBJDIR) $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJECTS)
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp include/%.hpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(OBJDIR):
