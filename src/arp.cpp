@@ -14,84 +14,78 @@
 #include <map>
 #include <set>
 #include <string>
+#include <thread>
 #include <vector>
+
+namespace arp {
 
 using monotonic_clock = std::chrono::_V2::steady_clock;
 
-class ArpTableEntry {
-private:
-    std::string mac;
-    std::string ip;
-    monotonic_clock::time_point expire_at;
+ArpTableEntry::ArpTableEntry(std::string _mac, std::string _ip) : mac(_mac), ip(_ip) {
+    used();
+}
 
-public:
-    ArpTableEntry(std::string _mac, std::string _ip) : mac(_mac), ip(_ip) {
-        used();
+bool ArpTableEntry::expired() const noexcept {
+    return expire_at <= monotonic_clock().now();
+}
+
+void ArpTableEntry::used() {
+    expire_at = monotonic_clock().now() + std::chrono::seconds(60);
+}
+
+std::string ArpTableEntry::get_mac() const noexcept {
+    return mac;
+}
+
+std::string ArpTableEntry::get_ip() const noexcept {
+    return ip;
+}
+
+ArpTable::ArpTable() {
+}
+
+std::string ArpTable::getMac(std::string ip) {
+    auto elem = by_ip.find(ip);
+    if (elem != by_ip.end() && !(*elem).second.expired()) {
+        return (*elem).second.get_mac();
     }
+    not_found.insert(ip);
+    return "ERROR";  //!!!
+}
 
-    bool expired() noexcept {
-        return expire_at <= monotonic_clock().now();
+auto ArpTable::getNotFoundIps() const {
+    return not_found;
+}
+
+void ArpTable::macIsUsed(std::string mac) {
+    auto elem = by_mac.find(mac);
+    if (elem != by_mac.end()) {
+        (*elem).second.used();
     }
+}
 
-    void used() {
-        expire_at = monotonic_clock().now() + std::chrono::seconds(60);
+void ArpTable::create(std::string mac, std::string ip) {
+    ArpTableEntry entry(mac, ip);
+    by_mac[mac] = entry;
+    by_ip[ip] = entry;
+    auto it = std::find(not_found.begin(), not_found.end(), mac);
+    if (it != not_found.end()) {
+        not_found.erase(it);
     }
+}
 
-    std::string get_mac() noexcept {
-        return mac;
+ArpHandler::ArpHandler(UeStorage _ue_storage, ArpTable _arp_table, /*??? dnSock*/)
+    : ue_storage(_ue_storage), arp_table(_arp_table) {
+    /*update_loop = ???*/
+}
+
+void ArpHandler::run() {
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        tick();
     }
+}
 
-    std::string get_ip() noexcept {
-        return ip;
-    }
-};
-
-class ArpTable {
-private:
-    std::map<std::string, ArpTableEntry> by_ip;
-    std::map<std::string, ArpTableEntry> by_mac;
-    std::multiset<std::string> not_found;
-
-public:
-    ArpTable() {
-    }
-
-    std::string getMac(std::string ip) {
-        auto elem = by_ip.find(ip);
-        if (elem != by_ip.end() && !(*elem).second.expired()) {
-            return (*elem).second.get_mac();
-        }
-        not_found.insert(ip);
-        return "ERROR";  //!!!
-    }
-
-    auto getNotFoundIps() {
-        return not_found;
-    }
-
-    void macIsUsed(std::string mac) {
-        auto elem = by_mac.find(mac);
-        if (elem != by_mac.end()) {
-            (*elem).second.used();
-        }
-    }
-
-    void create(std::string mac, std::string ip) {
-        ArpTableEntry entry(mac, ip);
-        by_mac[mac] = entry;
-        by_ip[ip] = entry;
-        auto it = std::find(not_found.begin(), not_found.end(), mac);
-        if (it != not_found.end()) {
-            not_found.erase(it);
-        }
-    }
-};
-
-class ArpHandler {
-private:
-    int request_timeout_s = 5;
-
-public:
-    ArpTable(UeStorage _ueStorage, ArpTable _table, int dnSock) {
-    }
-};
+void ArpHandler::tick() {
+}
+}  // namespace arp

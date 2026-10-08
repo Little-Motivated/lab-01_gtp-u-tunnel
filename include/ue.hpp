@@ -6,6 +6,8 @@
 #include <map>
 #include <string>
 
+namespace ue {
+
 class Ue {
 private:
     std::string ip;
@@ -26,3 +28,4 @@ private:
 public:
     UeStorage();
 };
+}  // namespace ue

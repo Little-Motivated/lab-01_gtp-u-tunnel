@@ -7,7 +7,9 @@
 #include <set>
 #include <string>
 
-using monotonic_clock = std::chrono::_V2::steady_clock;
+namespace arp {
+
+using monotonic_clock = std::chrono::steady_clock;
 
 class ArpTableEntry {
 private:
@@ -31,16 +33,27 @@ private:
 
 public:
     ArpTable();
-    std::string getMac(std::string ip) const;
+    std::string getMac(std::string ip);
     auto getNotFoundIps() const;
     void macIsUsed(std::string mac);
     void create(std::string mac, std::string ip);
 };
 
-/*class ArpHandler {
+class ArpHandler {
 private:
     int request_timeout_s = 5;
+    ue::UeStorage ue_storage;
+    //??? dn_sock;
+    ArpTable arp_table;
+    std::vector<int> pending_requests;
+    //??? update_loop;
 
 public:
-    ArpTable(UeStorage _ueStorage, ArpTable _table, int dnSock);
-};*/
+    ArpHandler(ue::UeStorage _ueStorage, ArpTable _table/*, *??? dnSock*/);
+    void run();  // async
+    void tick();
+    void stop();
+    void onPacketFromDn();
+    void handleArp();
+};
+}  // namespace arp
