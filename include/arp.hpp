@@ -13,30 +13,30 @@ using monotonic_clock = std::chrono::steady_clock;
 
 class ArpTableEntry {
 private:
-    std::string mac;
+    std::array<std::uint8_t, 6> mac;
     std::string ip;
     monotonic_clock::time_point expire_at;
 
 public:
-    ArpTableEntry(std::string _mac, std::string _ip);
+    ArpTableEntry(std::array<std::uint8_t, 6> _mac, std::string _ip);
     bool expired() const noexcept;
     void used();
-    std::string get_mac() const noexcept;
+    std::array<std::uint8_t, 6> get_mac() const noexcept;
     std::string get_ip() const noexcept;
 };
 
 class ArpTable {
 private:
     std::map<std::string, ArpTableEntry> by_ip;
-    std::map<std::string, ArpTableEntry> by_mac;
+    std::map<std::array<std::uint8_t, 6>, ArpTableEntry> by_mac;
     std::multiset<std::string> not_found;
 
 public:
     ArpTable();
-    std::string getMac(std::string ip);
+    std::array<std::uint8_t, 6> getMac(std::string ip);
     auto getNotFoundIps() const;
-    void macIsUsed(std::string mac);
-    void create(std::string mac, std::string ip);
+    void macIsUsed(std::array<std::uint8_t, 6> mac);
+    void create(std::array<std::uint8_t, 6> mac, std::string ip);
 };
 
 class ArpHandler {
@@ -49,7 +49,7 @@ private:
     //??? update_loop;
 
 public:
-    ArpHandler(ue::UeStorage _ueStorage, ArpTable _table/*, *??? dnSock*/);
+    ArpHandler(ue::UeStorage _ueStorage, ArpTable _table /*, *??? dnSock*/);
     void run();  // async
     void tick();
     void stop();
