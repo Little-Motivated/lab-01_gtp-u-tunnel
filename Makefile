@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++20 -Wall -Wextra -O3 -Iinclude
+CXXFLAGS = -std=c++20 -Wall -Wextra -Iinclude
 
 TARGET = tun
 SRCDIR = src
@@ -11,7 +11,7 @@ all: $(TARGET)
 $(TARGET): $(OBJDIR) $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJECTS)
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.cpp include/%.hpp
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(OBJDIR):

@@ -7,7 +7,7 @@ BraceWrapping:
     SplitEmptyFunction: false
     SplitEmptyRecord: false
 
-AllowShortFunctionsOnASingleLine: All
+AllowShortFunctionsOnASingleLine: Empty
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 
 SpacesBeforeTrailingComments: 2
