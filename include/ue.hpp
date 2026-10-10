@@ -27,5 +27,7 @@ private:
 
 public:
     UeStorage();
+    Ue *getByTeid(std::int32_t teid);
+    Ue *getByIp(std::string ip);
 };
 }  // namespace ue
