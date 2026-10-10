@@ -15,14 +15,14 @@ std::string Ue::get_ip() const noexcept {
     return ip;
 }
 
-std::int32_t Ue::get_teid_ul() const noexcept {
-    return teid_ul;
+std::int32_t Ue::get_teid_dl() const noexcept {
+    return teid_dl;
 }
 
 UeStorage::UeStorage() {
     for (int i = 1; i < 5; ++i) {
         Ue ue(std::string("192.168.7.") + std::to_string(i), i * 2, i * 2 + 1);  // !!!
-        ues_by_teid.emplace(ue.get_teid_ul(),
+        ues_by_teid.emplace(ue.get_teid_dl(),
                             Ue(std::string("192.168.7.") + std::to_string(i), i * 2, i * 2 + 1));
         ues_by_ip.emplace(ue.get_ip(),
                           Ue(std::string("192.168.7.") + std::to_string(i), i * 2, i * 2 + 1));

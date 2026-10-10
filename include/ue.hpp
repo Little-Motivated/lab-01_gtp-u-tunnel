@@ -17,7 +17,7 @@ private:
 public:
     Ue(std::string _ip, std::int32_t _teid_dl, std::int32_t _teid_ul);
     std::string get_ip() const noexcept;
-    std::int32_t get_teid_ul() const noexcept;
+    std::int32_t get_teid_dl() const noexcept;
 };
 
 class UeStorage {
