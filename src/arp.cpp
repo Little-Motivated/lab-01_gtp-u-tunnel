@@ -19,7 +19,7 @@
 
 namespace arp {
 
-using monotonic_clock = std::chrono::_V2::steady_clock;
+using monotonic_clock = std::chrono::steady_clock;
 
 ArpTableEntry::ArpTableEntry(std::array<std::uint8_t, 6> _mac, std::string _ip)
     : mac(_mac), ip(_ip) {
@@ -68,23 +68,23 @@ void ArpTable::create(std::array<std::uint8_t, 6> mac, std::string ip) {
     ArpTableEntry entry(mac, ip);
     by_mac[mac] = entry;
     by_ip[ip] = entry;
-    auto it = std::find(not_found.begin(), not_found.end(), mac);
+    auto it = std::find(not_found.begin(), not_found.end(), ip);
     if (it != not_found.end()) {
         not_found.erase(it);
     }
 }
 
-ArpHandler::ArpHandler(UeStorage _ue_storage, ArpTable _arp_table, /*??? dnSock*/)
-    : ue_storage(_ue_storage), arp_table(_arp_table) {
-    /*update_loop = ???*/
-}
+/*ArpHandler::ArpHandler(UeStorage _ue_storage, ArpTable _arp_table, /*??? dnSock)
+    //: ue_storage(_ue_storage), arp_table(_arp_table) {
+    /*update_loop = ???*//*
+}*/
 
-void ArpHandler::run() {
+/*void ArpHandler::run() {
     while (true) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         tick();
     }
-}
+}*/
 
 void ArpHandler::tick() {}
-}  // namespace arp
+}  // namespace arp*/

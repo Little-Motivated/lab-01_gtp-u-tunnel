@@ -18,6 +18,7 @@ private:
     monotonic_clock::time_point expire_at;
 
 public:
+    ArpTableEntry() = default;
     ArpTableEntry(std::array<std::uint8_t, 6> _mac, std::string _ip);
     bool expired() const noexcept;
     void used();
