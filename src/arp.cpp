@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <iostream>
 #include <map>
 #include <optional>
 #include <set>
@@ -54,14 +55,19 @@ std::optional<std::array<std::uint8_t, 6>> ArpTable::getMac(std::string ip) {
     return std::nullopt;
 }
 
-auto ArpTable::getNotFoundIps() const {
+void ArpTable::addNotFoudIp(std::string ip) {
+    not_found.insert(ip);
+}
+
+std::set<std::string> ArpTable::getNotFoundIps() const {
     return not_found;
 }
 
-void ArpTable::macIsUsed(std::array<std::uint8_t, 6> mac) {
+void ArpTable::macUsed(std::array<std::uint8_t, 6> mac) {
     auto elem = by_mac.find(mac);
     if (elem != by_mac.end()) {
-        (*elem).second.used();
+        std::cout << "                  Find by mac\n";
+        elem->second.used();
     }
 }
 
@@ -71,23 +77,9 @@ void ArpTable::create(std::array<std::uint8_t, 6> mac, std::string ip) {
     by_ip[ip] = entry;
     auto it = std::find(not_found.begin(), not_found.end(), ip);
     if (it != not_found.end()) {
+        std::cout << "     Found ip " << *it << "\n";
         not_found.erase(it);
     }
 }
 
-/*ArpHandler::ArpHandler(UeStorage _ue_storage, ArpTable _arp_table, ??? dnSock)
-    //: ue_storage(_ue_storage), arp_table(_arp_table) {
-    update_loop = ???
-}
-
-
-
-    void ArpHandler::run() {
-        while (true) {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            tick();
-        }
-    }*/
-
-void ArpHandler::tick() {}
 }  // namespace arp*/

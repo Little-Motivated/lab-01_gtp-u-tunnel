@@ -48,10 +48,10 @@ int parse_eth(uint8_t *data, std::size_t len, EthHeader *eth) {
 }
 
 struct ArpHeader {
-    uint16_t hardware_type = 0;
-    uint16_t protocol_type = 0;
-    uint8_t hardware_size = 0;
-    uint8_t protocol_size = 0;
+    uint16_t hardware_type = 1;
+    uint16_t protocol_type = ETH_P_IP;
+    uint8_t hardware_size = 6;
+    uint8_t protocol_size = 4;
     uint16_t opcode = 0;
     std::array<std::uint8_t, 6> src_mac{};
     std::string src_ip;
@@ -117,9 +117,10 @@ int parse_ip(uint8_t *data, std::size_t len, IpHeader *header) {
 }
 
 void build_eth(EthHeader *eth, const std::array<std::uint8_t, 6> &dst_mac,
-               const std::array<std::uint8_t, 6> &src_mac) {
+               const std::array<std::uint8_t, 6> &src_mac, uint16_t ether_type) {
     std::memcpy(eth->dst_mac.data(), dst_mac.data(), 6);
     std::memcpy(eth->src_mac.data(), src_mac.data(), 6);
+    eth->ether_type = ether_type;
 }
 
 void build_arp(ArpHeader *arp, uint16_t opcode, const std::array<std::uint8_t, 6> &src_mac,
@@ -172,7 +173,7 @@ private:
     asio::generic::raw_protocol::socket sock_raw;
     asio::ip::udp::socket sock_udp;
     asio::ip::udp::endpoint gnb_endpoint;
-    asio::steady_timer timer;
+    asio::steady_timer arp_timer;
 
     arp::ArpTable arp_table;
     ue::UeStorage ue_storage;
@@ -207,7 +208,7 @@ private:
 
         std::uint8_t *payload = data + 14;
         std::size_t payload_len = n - 14;
-        arp_table.macIsUsed(eth.src_mac);
+        arp_table.macUsed(eth.src_mac);
         std::cout << "Check 1\n";
         if (eth.ether_type == ETH_P_ARP) {
             std::cout << "Check 2\n";
@@ -217,6 +218,7 @@ private:
                 // throw
                 return;
             }
+
             if (arp.opcode == 1) {
                 std::cout << "Check 2.1\n";
                 if (ue_storage.getByIp(arp.dst_ip) == nullptr) {
@@ -226,7 +228,7 @@ private:
                 ArpHeader arp_reply = arp;
                 EthHeader eth_send = eth;
                 build_arp(&arp_reply, 2, UPF_MAC, arp.dst_ip, arp.src_mac, arp.src_ip);
-                build_eth(&eth_send, eth.src_mac, UPF_MAC);
+                build_eth(&eth_send, eth.src_mac, UPF_MAC, eth.ether_type);
                 auto frame = raw(eth_send, arp_reply);
                 sock_raw.send(asio::buffer(frame));  // async
 
@@ -282,20 +284,53 @@ private:
             std::cout << "processUdpPacket: There is no ue with teid_ul " << teid << "\n";
             return;
         }
-        EthHeader eth;
-        auto mac = arp_table.getMac(ue->get_ip());
+        auto mac = arp_table.getMac(DN_IP);
         if (!mac.has_value()) {
-            std::cout << "processUdpPacket: There is no ue with ip " << ue->get_ip()
-                      << " in ARP-table" << "\n";
+            std::cout << "processUdpPacket: There is no ip " << DN_IP << " in ARP-table"
+                      << "\n";
+            arp_table.addNotFoudIp(DN_IP);
+            // std::cout << "Not found ips count: " << arp_table.getNotFoundIps().size() << "\n";
+            // std::cout << "Not found ip: " << *arp_table.getNotFoundIps().begin() << "\n";
             return;
         }
-        build_eth(&eth, mac.value(), UPF_MAC);
+        EthHeader eth;
+        build_eth(&eth, mac.value(), UPF_MAC, ETH_P_IP);
         auto raw_data = raw(eth, payload, payload_len);
-        sock_raw.send(asio::buffer(raw_data));
+        sock_raw.send(asio::buffer(raw_data));  // async
+    }
+
+    void arpTick() {
+        arp_timer.expires_after(std::chrono::seconds(1));
+        arp_timer.async_wait([this](const boost::system::error_code &error_code) {
+            if (!error_code) {
+                arpTick();
+                sendArp();
+            }
+        });
+    }
+
+    void sendArp() {
+        std::set<std::string> not_found = arp_table.getNotFoundIps();
+        std::cout << "sendArp: Send ARP to ip " << arp_table.getNotFoundIps().size() << "\n";
+        for (auto ip : not_found) {
+            ArpHeader arp;
+            EthHeader eth;
+            build_arp(&arp, 1, UPF_MAC, UPF_TO_DN_IP, BCAST_MAC, ip);
+            build_eth(&eth, BCAST_MAC, UPF_MAC, ETH_P_ARP);
+            auto frame_shared = std::make_shared<std::array<uint8_t, 42UL>>(raw(eth, arp));
+            sock_raw.async_send(
+                asio::buffer(*frame_shared),
+                [this, frame_shared, ip](const boost::system::error_code &error_code,
+                                         std::size_t _bytes_received) {
+                    if (!error_code) {
+                        std::cout << "sendArp: Send ARP to ip " << ip << "\n";
+                    }
+                });
+        }
     }
 
 public:
-    Upf(asio::io_context &_io) : io(_io), sock_raw(_io), sock_udp(_io), timer(_io) {}
+    Upf(asio::io_context &_io) : io(_io), sock_raw(_io), sock_udp(_io), arp_timer(_io) {}
 
     void start() {
         asio::generic::raw_protocol raw_protocol(AF_PACKET, SOCK_RAW);
@@ -314,6 +349,7 @@ public:
 
         receiveRaw();
         receiveUdp();
+        arpTick();
     }
 };
 

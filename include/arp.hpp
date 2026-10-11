@@ -28,33 +28,17 @@ public:
 
 class ArpTable {
 private:
-    std::map<std::string, ArpTableEntry> by_ip;
-    std::map<std::array<std::uint8_t, 6>, ArpTableEntry> by_mac;
-    std::multiset<std::string> not_found;
+    std::map<std::string, ArpTableEntry> by_ip{};
+    std::map<std::array<std::uint8_t, 6>, ArpTableEntry> by_mac{};
+    std::set<std::string> not_found{};
 
 public:
     ArpTable();
     std::optional<std::array<std::uint8_t, 6>> getMac(std::string ip);
-    auto getNotFoundIps() const;
-    void macIsUsed(std::array<std::uint8_t, 6> mac);
+    void addNotFoudIp(std::string ip);
+    std::set<std::string> getNotFoundIps() const;
+    void macUsed(std::array<std::uint8_t, 6> mac);
     void create(std::array<std::uint8_t, 6> mac, std::string ip);
 };
 
-class ArpHandler {
-private:
-    int request_timeout_s = 5;
-    ue::UeStorage ue_storage;
-    //??? dn_sock;
-    ArpTable arp_table;
-    std::vector<int> pending_requests;
-    //??? update_loop;
-
-public:
-    ArpHandler(ue::UeStorage _ueStorage, ArpTable _table /*, *??? dnSock*/);
-    void run();  // async
-    void tick();
-    void stop();
-    void onPacketFromDn();
-    void handleArp();
-};
 }  // namespace arp
