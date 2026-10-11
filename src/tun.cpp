@@ -223,7 +223,7 @@ private:
                 build_eth(eth_send, eth.src_mac, UPF_MAC, eth.ether_type);
 
                 auto frame_sh =
-                    std::make_shared<std::vector<uint8_t>>(raw(eth, payload, payload_len));
+                    std::make_shared<std::array<uint8_t, 42UL>>(raw(eth_send, arp_reply));
                 sock_raw.async_send(
                     asio::buffer(*frame_sh,
                     [frame_sh(const boost::system::error_code &error_code, std::size_t) {
