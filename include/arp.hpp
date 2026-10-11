@@ -28,9 +28,9 @@ public:
 
 class ArpTable {
 private:
-    std::map<std::string, ArpTableEntry> by_ip{};
-    std::map<std::array<std::uint8_t, 6>, ArpTableEntry> by_mac{};
-    std::set<std::string> not_found_ips{};
+    std::map<std::string, ArpTableEntry> by_ip;
+    std::map<std::array<std::uint8_t, 6>, ArpTableEntry> by_mac;
+    std::set<std::string> not_found_ips;
 
 public:
     ArpTable() = default;

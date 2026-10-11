@@ -1,23 +1,7 @@
 #include "arp.hpp"
 #include "ue.hpp"
 
-#include <arpa/inet.h>
-#include <linux/if_ether.h>
-#include <linux/if_packet.h>
-#include <net/if.h>
-#include <stdio.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
-#include <algorithm>
-#include <chrono>
 #include <iostream>
-#include <map>
-#include <optional>
-#include <set>
-#include <string>
-#include <thread>
-#include <vector>
 
 namespace arp {
 

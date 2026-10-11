@@ -35,17 +35,12 @@ UeStorage::UeStorage() {
     }
 }
 
-Ue *UeStorage::getByTeidDl(std::int32_t teid_dl) {
-    auto res = ues_by_teid_dl.find(teid_dl);
-    return (res == ues_by_teid_dl.end()) ? nullptr : &res->second;
-}
-
-Ue *UeStorage::getByTeidUl(std::int32_t teid_ul) {
+const Ue *UeStorage::getByTeidUl(std::int32_t teid_ul) const {
     auto res = ues_by_teid_ul.find(teid_ul);
     return (res == ues_by_teid_ul.end()) ? nullptr : &res->second;
 }
 
-Ue *UeStorage::getByIp(std::string ip) {
+const Ue *UeStorage::getByIp(std::string ip) const {
     auto res = ues_by_ip.find(ip);
     return (res == ues_by_ip.end()) ? nullptr : &res->second;
 }

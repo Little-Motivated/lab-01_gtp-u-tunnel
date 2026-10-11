@@ -29,8 +29,7 @@ private:
 
 public:
     UeStorage();
-    Ue *getByTeidDl(std::int32_t teid_dl);
-    Ue *getByTeidUl(std::int32_t teid_ul);
-    Ue *getByIp(std::string ip);
+    const Ue *getByTeidUl(std::int32_t teid_ul) const;
+    const Ue *getByIp(std::string ip) const;
 };
 }  // namespace ue

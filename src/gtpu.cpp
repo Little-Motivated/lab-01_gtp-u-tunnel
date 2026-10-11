@@ -1,7 +1,7 @@
 #include "gtpu.hpp"
 
+#include <cstring>
 #include <iostream>
-#include <string>
 #include <vector>
 
 namespace gtpu {
@@ -18,7 +18,7 @@ std::vector<uint8_t> encodeGtpu(const uint8_t *data, uint32_t teid, std::size_t 
     return raw;
 }
 
-int decodeGtpu(const uint8_t *data, std::size_t len, uint32_t *teid, std::size_t payload_len) {
+int decodeGtpu(const uint8_t *data, std::size_t len, uint32_t &teid, std::size_t payload_len) {
     if (len < 8) {
         return -1;
     }
@@ -31,7 +31,7 @@ int decodeGtpu(const uint8_t *data, std::size_t len, uint32_t *teid, std::size_t
     }
     uint32_t tmp32;
     std::memcpy(&tmp32, data + 4, 4);
-    *teid = ntohl(tmp32);
+    teid = ntohl(tmp32);
     return 0;
 }
 

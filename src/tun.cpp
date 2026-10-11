@@ -1,10 +1,9 @@
-#include <arpa/inet.h>
+#include "arp.hpp"
+#include "gtpu.hpp"
+#include "ue.hpp"
+
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
-#include <net/if.h>
-#include <stdio.h>
-#include <sys/socket.h>
-#include <unistd.h>
 
 #include <boost/asio.hpp>
 #include <chrono>
@@ -12,16 +11,11 @@
 #include <optional>
 #include <string>
 
-#include "arp.hpp"
-#include "gtpu.hpp"
-#include "ue.hpp"
-
 namespace asio = boost::asio;
 
 const uint8_t ETH_HEADER_SIZE = 14;
 const uint8_t ARP_HEADER_SIZE = 28;
 
-const std::string NEXT_HOP_IP = "192.168.5.1";
 const std::array<std::uint8_t, 6> UPF_MAC = {0xbb, 0x00, 0x00, 0x00, 0x00, 0x01};
 const std::array<std::uint8_t, 6> BCAST_MAC = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
@@ -37,13 +31,13 @@ struct EthHeader {
     uint16_t ether_type = 0;
 };
 
-int parse_eth(uint8_t *data, std::size_t len, EthHeader *eth) {
+int parse_eth(uint8_t *data, std::size_t len, EthHeader &eth) {
     if (len < 14) {
         return -1;
     }
-    std::memcpy(eth->dst_mac.data(), data, 6);
-    std::memcpy(eth->src_mac.data(), data + 6, 6);
-    eth->ether_type = ntohs(*reinterpret_cast<std::uint16_t *>(data + 12));
+    std::memcpy(eth.dst_mac.data(), data, 6);
+    std::memcpy(eth.src_mac.data(), data + 6, 6);
+    eth.ether_type = ntohs(*reinterpret_cast<std::uint16_t *>(data + 12));
     return 0;
 }
 
@@ -59,26 +53,26 @@ struct ArpHeader {
     std::string dst_ip;
 };
 
-int parse_arp(uint8_t *data, std::size_t len, ArpHeader *arp) {
+int parse_arp(uint8_t *data, std::size_t len, ArpHeader &arp) {
     if (len < 28) {
         return -1;
     }
-    arp->hardware_type = ntohs(*reinterpret_cast<uint16_t *>(data));
-    arp->protocol_type = ntohs(*reinterpret_cast<uint16_t *>(data + 2));
-    arp->hardware_size = data[4];
-    arp->protocol_size = data[5];
-    arp->opcode = ntohs(*reinterpret_cast<uint16_t *>(data + 6));
-    std::memcpy(arp->src_mac.data(), data + 8, 6);
+    arp.hardware_type = ntohs(*reinterpret_cast<uint16_t *>(data));
+    arp.protocol_type = ntohs(*reinterpret_cast<uint16_t *>(data + 2));
+    arp.hardware_size = data[4];
+    arp.protocol_size = data[5];
+    arp.opcode = ntohs(*reinterpret_cast<uint16_t *>(data + 6));
+    std::memcpy(arp.src_mac.data(), data + 8, 6);
     char buf[INET_ADDRSTRLEN];
     if (inet_ntop(AF_INET, data + 14, buf, sizeof(buf)) == NULL) {
         return -1;
     }
-    arp->src_ip = buf;
-    std::memcpy(arp->dst_mac.data(), data + 18, 6);
+    arp.src_ip = buf;
+    std::memcpy(arp.dst_mac.data(), data + 18, 6);
     if (inet_ntop(AF_INET, data + 24, buf, sizeof(buf)) == NULL) {
         return -1;
     }
-    arp->dst_ip = buf;
+    arp.dst_ip = buf;
     return 0;
 }
 
@@ -90,7 +84,7 @@ struct IpHeader {
     uint8_t *data = nullptr;
 };
 
-int parse_ip(uint8_t *data, std::size_t len, IpHeader *header) {
+int parse_ip(uint8_t *data, std::size_t len, IpHeader &header) {
     if (len < 20) {
         return -1;
     }
@@ -99,38 +93,38 @@ int parse_ip(uint8_t *data, std::size_t len, IpHeader *header) {
         return -1;
     }
 
-    header->data = data + header_size;
+    header.data = data + header_size;
     uint16_t data_size;
     std::memcpy(&data_size, data + 2, 2);
-    header->data_size = ntohs(data_size);
-    header->protocol = data[9];
+    header.data_size = ntohs(data_size);
+    header.protocol = data[9];
     char buf[INET_ADDRSTRLEN];
     if (inet_ntop(AF_INET, data + 12, buf, sizeof(buf)) == NULL) {
         return -1;
     }
-    header->src_ip = buf;
+    header.src_ip = buf;
     if (inet_ntop(AF_INET, data + 16, buf, sizeof(buf)) == NULL) {
         return -1;
     }
-    header->dst_ip = buf;
+    header.dst_ip = buf;
     return 0;
 }
 
-void build_eth(EthHeader *eth, const std::array<std::uint8_t, 6> &dst_mac,
+void build_eth(EthHeader &eth, const std::array<std::uint8_t, 6> &dst_mac,
                const std::array<std::uint8_t, 6> &src_mac, uint16_t ether_type) {
-    std::memcpy(eth->dst_mac.data(), dst_mac.data(), 6);
-    std::memcpy(eth->src_mac.data(), src_mac.data(), 6);
-    eth->ether_type = ether_type;
+    std::memcpy(eth.dst_mac.data(), dst_mac.data(), 6);
+    std::memcpy(eth.src_mac.data(), src_mac.data(), 6);
+    eth.ether_type = ether_type;
 }
 
-void build_arp(ArpHeader *arp, uint16_t opcode, const std::array<std::uint8_t, 6> &src_mac,
+void build_arp(ArpHeader &arp, uint16_t opcode, const std::array<std::uint8_t, 6> &src_mac,
                const std::string &src_ip, const std::array<std::uint8_t, 6> &dst_mac,
                const std::string &dst_ip) {
-    arp->opcode = opcode;
-    std::memcpy(arp->src_mac.data(), src_mac.data(), 6);
-    arp->src_ip = src_ip;
-    std::memcpy(arp->dst_mac.data(), dst_mac.data(), 6);
-    arp->dst_ip = dst_ip;
+    arp.opcode = opcode;
+    std::memcpy(arp.src_mac.data(), src_mac.data(), 6);
+    arp.src_ip = src_ip;
+    std::memcpy(arp.dst_mac.data(), dst_mac.data(), 6);
+    arp.dst_ip = dst_ip;
 }
 
 auto raw(const EthHeader &eth, const ArpHeader &arp) {
@@ -196,7 +190,7 @@ private:
     void processRawPacket(std::uint8_t *data, std::size_t n) {
         std::cout << "processRawPacket: Enter\n";
         EthHeader eth;
-        if (parse_eth(data, n, &eth) != 0) {
+        if (parse_eth(data, n, eth) != 0) {
             std::cout << "processRawPacket: Invalid ethernet header\n";
             return;
         }
@@ -213,7 +207,7 @@ private:
         if (eth.ether_type == ETH_P_ARP) {
             std::cout << "Check 2\n";
             ArpHeader arp;
-            if (parse_arp(payload, payload_len, &arp) != 0) {
+            if (parse_arp(payload, payload_len, arp) != 0) {
                 std::cout << "processRawPacket: Invalid ARP header\n";
                 // throw
                 return;
@@ -227,8 +221,8 @@ private:
                 }
                 ArpHeader arp_reply = arp;
                 EthHeader eth_send = eth;
-                build_arp(&arp_reply, 2, UPF_MAC, arp.dst_ip, arp.src_mac, arp.src_ip);
-                build_eth(&eth_send, eth.src_mac, UPF_MAC, eth.ether_type);
+                build_arp(arp_reply, 2, UPF_MAC, arp.dst_ip, arp.src_mac, arp.src_ip);
+                build_eth(eth_send, eth.src_mac, UPF_MAC, eth.ether_type);
                 auto frame = raw(eth_send, arp_reply);
                 sock_raw.send(asio::buffer(frame));  // async
 
@@ -241,12 +235,12 @@ private:
         if (eth.ether_type == ETH_P_IP) {
             std::cout << "Check 3\n";
             IpHeader ip;
-            if (parse_ip(payload, payload_len, &ip) != 0) {
+            if (parse_ip(payload, payload_len, ip) != 0) {
                 std::cout << "processRawPacket: IP. Invalid ip header\n";
                 return;
             }
 
-            ue::Ue *ue = ue_storage.getByIp(ip.dst_ip);
+            const ue::Ue *ue = ue_storage.getByIp(ip.dst_ip);
             std::cout << ue->get_ip() << "\n";
             if (ue == nullptr) {
                 std::cout << "processRawPacket: IP. There is no ue with this ip\n";
@@ -274,12 +268,12 @@ private:
         uint8_t *payload = data + 8;
         std::size_t payload_len = bytes_received - 8;
         uint32_t teid;
-        if (gtpu::decodeGtpu(data, bytes_received, &teid, payload_len) != 0) {
+        if (gtpu::decodeGtpu(data, bytes_received, teid, payload_len) != 0) {
             std::cout << "processUdpPacket: Invalid GTPU header\n";
             return;
         }
 
-        ue::Ue *ue = ue_storage.getByTeidUl(teid);
+        const ue::Ue *ue = ue_storage.getByTeidUl(teid);
         if (ue == nullptr) {
             std::cout << "processUdpPacket: There is no ue with teid_ul " << teid << "\n";
             return;
@@ -294,7 +288,7 @@ private:
             return;
         }
         EthHeader eth;
-        build_eth(&eth, mac.value(), UPF_MAC, ETH_P_IP);
+        build_eth(eth, mac.value(), UPF_MAC, ETH_P_IP);
         auto raw_data = raw(eth, payload, payload_len);
         sock_raw.send(asio::buffer(raw_data));  // async
     }
@@ -315,8 +309,8 @@ private:
         for (auto ip : not_found_ips) {
             ArpHeader arp;
             EthHeader eth;
-            build_arp(&arp, 1, UPF_MAC, UPF_TO_DN_IP, BCAST_MAC, ip);
-            build_eth(&eth, BCAST_MAC, UPF_MAC, ETH_P_ARP);
+            build_arp(arp, 1, UPF_MAC, UPF_TO_DN_IP, BCAST_MAC, ip);
+            build_eth(eth, BCAST_MAC, UPF_MAC, ETH_P_ARP);
             auto frame_shared = std::make_shared<std::array<uint8_t, 42UL>>(raw(eth, arp));
             sock_raw.async_send(
                 asio::buffer(*frame_shared),
