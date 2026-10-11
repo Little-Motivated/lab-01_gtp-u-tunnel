@@ -221,8 +221,16 @@ private:
                 EthHeader eth_send = eth;
                 build_arp(arp_reply, 2, UPF_MAC, arp.dst_ip, arp.src_mac, arp.src_ip);
                 build_eth(eth_send, eth.src_mac, UPF_MAC, eth.ether_type);
-                auto frame = raw(eth_send, arp_reply);
-                sock_raw.send(asio::buffer(frame));  // async
+
+                auto frame_sh =
+                    std::make_shared<std::vector<uint8_t>>(raw(eth, payload, payload_len));
+                sock_raw.async_send(
+                    asio::buffer(*frame_sh,
+                    [frame_sh(const boost::system::error_code &error_code, std::size_t) {
+                    if (!error_code) {
+                        std::cout << "processUdpPacket: Reply to ARP to DN\n";
+                    }
+                    });
 
             } else if (arp.opcode == 2) {
                 std::cout << "processRawPacket: Get ARP reply from DN, IP: " << arp.src_ip << "\n";
