@@ -310,9 +310,9 @@ private:
     }
 
     void sendArp() {
-        std::set<std::string> not_found = arp_table.getNotFoundIps();
+        std::set<std::string> not_found_ips = arp_table.getNotFoundIps();
         std::cout << "sendArp: Send ARP to ip " << arp_table.getNotFoundIps().size() << "\n";
-        for (auto ip : not_found) {
+        for (auto ip : not_found_ips) {
             ArpHeader arp;
             EthHeader eth;
             build_arp(&arp, 1, UPF_MAC, UPF_TO_DN_IP, BCAST_MAC, ip);

@@ -32,7 +32,7 @@ bool ArpTableEntry::expired() const noexcept {
     return expire_at <= monotonic_clock().now();
 }
 
-void ArpTableEntry::used() {
+void ArpTableEntry::used() noexcept {
     expire_at = monotonic_clock().now() + std::chrono::seconds(60);
 }
 
@@ -44,23 +44,21 @@ std::string ArpTableEntry::get_ip() const noexcept {
     return ip;
 }
 
-ArpTable::ArpTable() {}
-
 std::optional<std::array<std::uint8_t, 6>> ArpTable::getMac(std::string ip) {
     auto elem = by_ip.find(ip);
     if (elem != by_ip.end() && !(*elem).second.expired()) {
         return (*elem).second.get_mac();
     }
-    not_found.insert(ip);
+    not_found_ips.insert(ip);
     return std::nullopt;
 }
 
 void ArpTable::addNotFoudIp(std::string ip) {
-    not_found.insert(ip);
+    not_found_ips.insert(ip);
 }
 
-std::set<std::string> ArpTable::getNotFoundIps() const {
-    return not_found;
+std::set<std::string> ArpTable::getNotFoundIps() const noexcept {
+    return not_found_ips;
 }
 
 void ArpTable::macUsed(std::array<std::uint8_t, 6> mac) {
@@ -75,10 +73,10 @@ void ArpTable::create(std::array<std::uint8_t, 6> mac, std::string ip) {
     ArpTableEntry entry(mac, ip);
     by_mac[mac] = entry;
     by_ip[ip] = entry;
-    auto it = std::find(not_found.begin(), not_found.end(), ip);
-    if (it != not_found.end()) {
+    auto it = not_found_ips.find(ip);
+    if (it != not_found_ips.end()) {
         std::cout << "     Found ip " << *it << "\n";
-        not_found.erase(it);
+        not_found_ips.erase(it);
     }
 }
 

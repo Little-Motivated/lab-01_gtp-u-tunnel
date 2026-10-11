@@ -21,7 +21,7 @@ public:
     ArpTableEntry() = default;
     ArpTableEntry(std::array<std::uint8_t, 6> _mac, std::string _ip);
     bool expired() const noexcept;
-    void used();
+    void used() noexcept;
     std::array<std::uint8_t, 6> get_mac() const noexcept;
     std::string get_ip() const noexcept;
 };
@@ -30,13 +30,13 @@ class ArpTable {
 private:
     std::map<std::string, ArpTableEntry> by_ip{};
     std::map<std::array<std::uint8_t, 6>, ArpTableEntry> by_mac{};
-    std::set<std::string> not_found{};
+    std::set<std::string> not_found_ips{};
 
 public:
-    ArpTable();
+    ArpTable() = default;
     std::optional<std::array<std::uint8_t, 6>> getMac(std::string ip);
     void addNotFoudIp(std::string ip);
-    std::set<std::string> getNotFoundIps() const;
+    std::set<std::string> getNotFoundIps() const noexcept;
     void macUsed(std::array<std::uint8_t, 6> mac);
     void create(std::array<std::uint8_t, 6> mac, std::string ip);
 };
