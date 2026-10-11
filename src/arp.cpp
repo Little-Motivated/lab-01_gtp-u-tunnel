@@ -1,8 +1,6 @@
 #include "arp.hpp"
 #include "ue.hpp"
 
-#include <iostream>
-
 namespace arp {
 
 using monotonic_clock = std::chrono::steady_clock;
@@ -48,7 +46,6 @@ std::set<std::string> ArpTable::getNotFoundIps() const noexcept {
 void ArpTable::macUsed(std::array<std::uint8_t, 6> mac) {
     auto elem = by_mac.find(mac);
     if (elem != by_mac.end()) {
-        std::cout << "                  Find by mac\n";
         elem->second.used();
     }
 }
@@ -59,7 +56,6 @@ void ArpTable::create(std::array<std::uint8_t, 6> mac, std::string ip) {
     by_ip[ip] = entry;
     auto it = not_found_ips.find(ip);
     if (it != not_found_ips.end()) {
-        std::cout << "     Found ip " << *it << "\n";
         not_found_ips.erase(it);
     }
 }

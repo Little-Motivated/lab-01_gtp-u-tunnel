@@ -1,7 +1,6 @@
 #include "gtpu.hpp"
 
 #include <cstring>
-#include <iostream>
 #include <vector>
 
 namespace gtpu {
@@ -25,7 +24,6 @@ int decodeGtpu(const uint8_t *data, std::size_t len, uint32_t &teid, std::size_t
     uint16_t tmp16;
     std::memcpy(&tmp16, data + 2, 2);
     std::size_t pl_len = ntohs(tmp16);
-    std::cout << "pl_len = " << pl_len << " payload = " << payload_len << "\n";
     if (pl_len != payload_len) {
         return -1;
     }

@@ -188,7 +188,6 @@ private:
     }
 
     void processRawPacket(std::uint8_t *data, std::size_t n) {
-        std::cout << "processRawPacket: Enter\n";
         EthHeader eth;
         if (parse_eth(data, n, eth) != 0) {
             std::cout << "processRawPacket: Invalid ethernet header\n";
@@ -196,27 +195,26 @@ private:
         }
 
         if (eth.src_mac == UPF_MAC) {
-            std::cout << "processRawPacket: Get UPF's packet\n";
+            std::cout << "processRawPacket: Get UPF's packet. Cancel\n";
             return;
         }
 
         std::uint8_t *payload = data + 14;
         std::size_t payload_len = n - 14;
         arp_table.macUsed(eth.src_mac);
-        std::cout << "Check 1\n";
         if (eth.ether_type == ETH_P_ARP) {
-            std::cout << "Check 2\n";
+            std::cout << "processRawPacket: Get ARP packet from DN\n";
             ArpHeader arp;
             if (parse_arp(payload, payload_len, arp) != 0) {
                 std::cout << "processRawPacket: Invalid ARP header\n";
-                // throw
                 return;
             }
 
             if (arp.opcode == 1) {
-                std::cout << "Check 2.1\n";
+                std::cout << "processRawPacket: Get ARP request from DN\n";
                 if (ue_storage.getByIp(arp.dst_ip) == nullptr) {
-                    std::cout << "processRawPacket: ARP-request. There is no ue with this ip\n";
+                    std::cout << "processRawPacket: ARP request. There is no UE with IP: "
+                              << arp.dst_ip << "\n";
                     return;
                 }
                 ArpHeader arp_reply = arp;
@@ -227,29 +225,35 @@ private:
                 sock_raw.send(asio::buffer(frame));  // async
 
             } else if (arp.opcode == 2) {
-                std::cout << "Check 2.2\n";
+                std::cout << "processRawPacket: Get ARP reply from DN, IP: " << arp.src_ip << "\n";
                 arp_table.create(arp.src_mac, arp.src_ip);
             }
-            std::cout << "Check 2.3\n";
         }
         if (eth.ether_type == ETH_P_IP) {
-            std::cout << "Check 3\n";
+            std::cout << "processRawPacket: Get IP packet from DN\n";
             IpHeader ip;
             if (parse_ip(payload, payload_len, ip) != 0) {
-                std::cout << "processRawPacket: IP. Invalid ip header\n";
+                std::cout << "processRawPacket: Invalid IP header\n";
                 return;
             }
 
             const ue::Ue *ue = ue_storage.getByIp(ip.dst_ip);
-            std::cout << ue->get_ip() << "\n";
             if (ue == nullptr) {
-                std::cout << "processRawPacket: IP. There is no ue with this ip\n";
+                std::cout << "processRawPacket: There is no UE with this IP: " << ip.dst_ip << "\n";
                 return;
             }
-            auto raw_data = gtpu::encodeGtpu(payload, ue->get_teid_dl(), payload_len);
-            sock_udp.send_to(asio::buffer(raw_data), gnb_endpoint);  // async
+            auto raw_data_sh = std::make_shared<std::vector<uint8_t>>(
+                gtpu::encodeGtpu(payload, ue->get_teid_dl(), payload_len));
+
+            sock_udp.async_send_to(
+                asio::buffer(*raw_data_sh), gnb_endpoint,
+                [raw_data_sh](const boost::system::error_code &error_code, std::size_t) {
+                    if (!error_code) {
+                        std::cout << "processRawPacket: Send GTPU to gNB\n";
+                    }
+                    std::cout << error_code.message() << "\n";
+                });
         }
-        std::cout << "Check 4\n";
     }
 
     void receiveUdp() {
@@ -275,7 +279,7 @@ private:
 
         const ue::Ue *ue = ue_storage.getByTeidUl(teid);
         if (ue == nullptr) {
-            std::cout << "processUdpPacket: There is no ue with teid_ul " << teid << "\n";
+            std::cout << "processUdpPacket: There is no UE with teid_ul " << teid << "\n";
             return;
         }
         auto mac = arp_table.getMac(DN_IP);
@@ -283,14 +287,18 @@ private:
             std::cout << "processUdpPacket: There is no ip " << DN_IP << " in ARP-table"
                       << "\n";
             arp_table.addNotFoudIp(DN_IP);
-            // std::cout << "Not found ips count: " << arp_table.getNotFoundIps().size() << "\n";
-            // std::cout << "Not found ip: " << *arp_table.getNotFoundIps().begin() << "\n";
             return;
         }
         EthHeader eth;
         build_eth(eth, mac.value(), UPF_MAC, ETH_P_IP);
-        auto raw_data = raw(eth, payload, payload_len);
-        sock_raw.send(asio::buffer(raw_data));  // async
+        auto raw_data_sh = std::make_shared<std::vector<uint8_t>>(raw(eth, payload, payload_len));
+        sock_raw.async_send(
+            asio::buffer(*raw_data_sh),
+            [raw_data_sh](const boost::system::error_code &error_code, std::size_t) {
+                if (!error_code) {
+                    std::cout << "processUdpPacket: Send IP to DN\n";
+                }
+            });
     }
 
     void arpTick() {
@@ -305,7 +313,6 @@ private:
 
     void sendArp() {
         std::set<std::string> not_found_ips = arp_table.getNotFoundIps();
-        std::cout << "sendArp: Send ARP to ip " << arp_table.getNotFoundIps().size() << "\n";
         for (auto ip : not_found_ips) {
             ArpHeader arp;
             EthHeader eth;
@@ -314,10 +321,9 @@ private:
             auto frame_shared = std::make_shared<std::array<uint8_t, 42UL>>(raw(eth, arp));
             sock_raw.async_send(
                 asio::buffer(*frame_shared),
-                [this, frame_shared, ip](const boost::system::error_code &error_code,
-                                         std::size_t _bytes_received) {
+                [this, frame_shared, ip](const boost::system::error_code &error_code, std::size_t) {
                     if (!error_code) {
-                        std::cout << "sendArp: Send ARP to ip " << ip << "\n";
+                        std::cout << "sendArp: Send ARP to IP " << ip << "\n";
                     }
                 });
         }
@@ -350,6 +356,11 @@ public:
 int main() {
     asio::io_context io;
     Upf upf(io);
-    upf.start();
-    io.run();
+    try {
+        upf.start();
+        io.run();
+    } catch (std::exception &e) {
+        std::cout << e.what() << "\n";
+        return 1;
+    }
 }
