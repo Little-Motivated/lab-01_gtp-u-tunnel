@@ -19,19 +19,30 @@ std::int32_t Ue::get_teid_dl() const noexcept {
     return teid_dl;
 }
 
+std::int32_t Ue::get_teid_ul() const noexcept {
+    return teid_ul;
+}
+
 UeStorage::UeStorage() {
     for (int i = 1; i < 5; ++i) {
         Ue ue(std::string("192.168.7.") + std::to_string(i), i * 2, i * 2 + 1);  // !!!
-        ues_by_teid.emplace(ue.get_teid_dl(),
-                            Ue(std::string("192.168.7.") + std::to_string(i), i * 2, i * 2 + 1));
+        ues_by_teid_dl.emplace(ue.get_teid_dl(),
+                               Ue(std::string("192.168.7.") + std::to_string(i), i * 2, i * 2 + 1));
+        ues_by_teid_ul.emplace(ue.get_teid_ul(),
+                               Ue(std::string("192.168.7.") + std::to_string(i), i * 2, i * 2 + 1));
         ues_by_ip.emplace(ue.get_ip(),
                           Ue(std::string("192.168.7.") + std::to_string(i), i * 2, i * 2 + 1));
     }
 }
 
-Ue *UeStorage::getByTeid(std::int32_t teid) {
-    auto res = ues_by_teid.find(teid);
-    return (res == ues_by_teid.end()) ? nullptr : &res->second;
+Ue *UeStorage::getByTeidDl(std::int32_t teid_dl) {
+    auto res = ues_by_teid_dl.find(teid_dl);
+    return (res == ues_by_teid_dl.end()) ? nullptr : &res->second;
+}
+
+Ue *UeStorage::getByTeidUl(std::int32_t teid_ul) {
+    auto res = ues_by_teid_ul.find(teid_ul);
+    return (res == ues_by_teid_ul.end()) ? nullptr : &res->second;
 }
 
 Ue *UeStorage::getByIp(std::string ip) {

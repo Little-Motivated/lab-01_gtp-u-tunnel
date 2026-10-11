@@ -34,7 +34,7 @@ private:
 
 public:
     ArpTable();
-    std::array<std::uint8_t, 6> getMac(std::string ip);
+    std::optional<std::array<std::uint8_t, 6>> getMac(std::string ip);
     auto getNotFoundIps() const;
     void macIsUsed(std::array<std::uint8_t, 6> mac);
     void create(std::array<std::uint8_t, 6> mac, std::string ip);

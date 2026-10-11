@@ -9,6 +9,7 @@
 #include <boost/asio.hpp>
 #include <chrono>
 #include <iostream>
+#include <optional>
 #include <string>
 
 #include "arp.hpp"
@@ -115,10 +116,10 @@ int parse_ip(uint8_t *data, std::size_t len, IpHeader *header) {
     return 0;
 }
 
-void build_eth(EthHeader *eth, const std::array<std::uint8_t, 6> &src_mac,
-               const std::array<std::uint8_t, 6> &dst_mac) {
-    std::memcpy(eth->src_mac.data(), src_mac.data(), 6);
+void build_eth(EthHeader *eth, const std::array<std::uint8_t, 6> &dst_mac,
+               const std::array<std::uint8_t, 6> &src_mac) {
     std::memcpy(eth->dst_mac.data(), dst_mac.data(), 6);
+    std::memcpy(eth->src_mac.data(), src_mac.data(), 6);
 }
 
 void build_arp(ArpHeader *arp, uint16_t opcode, const std::array<std::uint8_t, 6> &src_mac,
@@ -152,6 +153,17 @@ auto raw(const EthHeader &eth, const ArpHeader &arp) {
     std::memcpy(frame.data() + 32, arp.dst_mac.data(), 6);
     inet_pton(AF_INET, arp.dst_ip.data(), frame.data() + 38);  // maybe error
     return frame;
+}
+
+auto raw(const EthHeader &eth, const uint8_t *payload, std::size_t payload_len) {
+    std::vector<uint8_t> raw_data(payload_len + 14);
+    std::memcpy(raw_data.data(), eth.dst_mac.data(), 6);
+    std::memcpy(raw_data.data() + 6, eth.src_mac.data(), 6);
+    uint16_t ether_type = htons(eth.ether_type);
+    std::memcpy(raw_data.data() + 12, &ether_type, 2);
+
+    std::memcpy(raw_data.data() + 14, payload, payload_len);
+    return raw_data;
 }
 
 class Upf {
@@ -214,7 +226,7 @@ private:
                 ArpHeader arp_reply = arp;
                 EthHeader eth_send = eth;
                 build_arp(&arp_reply, 2, UPF_MAC, arp.dst_ip, arp.src_mac, arp.src_ip);
-                build_eth(&eth_send, UPF_MAC, eth.src_mac);
+                build_eth(&eth_send, eth.src_mac, UPF_MAC);
                 auto frame = raw(eth_send, arp_reply);
                 sock_raw.send(asio::buffer(frame));  // async
 
@@ -244,6 +256,44 @@ private:
         std::cout << "Check 4\n";
     }
 
+    void receiveUdp() {
+        sock_udp.async_receive(
+            asio::buffer(gnb_buf),
+            [this](const boost::system::error_code &error_code, std::size_t bytes_received) {
+                if (!error_code) {
+                    std::cout << "Get " << bytes_received << " bytes from gNB\n";
+                    processUdpPacket(gnb_buf.data(), bytes_received);
+                }
+                receiveUdp();
+            });
+    }
+
+    void processUdpPacket(uint8_t *data, std::size_t bytes_received) {
+        uint8_t *payload = data + 8;
+        std::size_t payload_len = bytes_received - 8;
+        uint32_t teid;
+        if (gtpu::decodeGtpu(data, bytes_received, &teid, payload_len) != 0) {
+            std::cout << "processUdpPacket: Invalid GTPU header\n";
+            return;
+        }
+
+        ue::Ue *ue = ue_storage.getByTeidUl(teid);
+        if (ue == nullptr) {
+            std::cout << "processUdpPacket: There is no ue with teid_ul " << teid << "\n";
+            return;
+        }
+        EthHeader eth;
+        auto mac = arp_table.getMac(ue->get_ip());
+        if (!mac.has_value()) {
+            std::cout << "processUdpPacket: There is no ue with ip " << ue->get_ip()
+                      << " in ARP-table" << "\n";
+            return;
+        }
+        build_eth(&eth, mac.value(), UPF_MAC);
+        auto raw_data = raw(eth, payload, payload_len);
+        sock_raw.send(asio::buffer(raw_data));
+    }
+
 public:
     Upf(asio::io_context &_io) : io(_io), sock_raw(_io), sock_udp(_io), timer(_io) {}
 
@@ -263,6 +313,7 @@ public:
         gnb_endpoint = asio::ip::udp::endpoint(asio::ip::make_address(GNB_IP), GTPU_PORT);
 
         receiveRaw();
+        receiveUdp();
     }
 };
 

@@ -1,17 +1,6 @@
 #include "gtpu.hpp"
 
-#include <arpa/inet.h>
-#include <linux/if_ether.h>
-#include <linux/if_packet.h>
-#include <net/if.h>
-#include <stdio.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
-#include <algorithm>
-#include <chrono>
-#include <map>
-#include <set>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -27,6 +16,23 @@ std::vector<uint8_t> encodeGtpu(const uint8_t *data, uint32_t teid, std::size_t 
     std::memcpy(raw.data() + 4, &teid_n, 4);
     std::memcpy(raw.data() + 8, data, len);
     return raw;
+}
+
+int decodeGtpu(const uint8_t *data, std::size_t len, uint32_t *teid, std::size_t payload_len) {
+    if (len < 8) {
+        return -1;
+    }
+    uint16_t tmp16;
+    std::memcpy(&tmp16, data + 2, 2);
+    std::size_t pl_len = ntohs(tmp16);
+    std::cout << "pl_len = " << pl_len << " payload = " << payload_len << "\n";
+    if (pl_len != payload_len) {
+        return -1;
+    }
+    uint32_t tmp32;
+    std::memcpy(&tmp32, data + 4, 4);
+    *teid = ntohl(tmp32);
+    return 0;
 }
 
 }  // namespace gtpu

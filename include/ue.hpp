@@ -18,16 +18,19 @@ public:
     Ue(std::string _ip, std::int32_t _teid_dl, std::int32_t _teid_ul);
     std::string get_ip() const noexcept;
     std::int32_t get_teid_dl() const noexcept;
+    std::int32_t get_teid_ul() const noexcept;
 };
 
 class UeStorage {
 private:
-    std::map<std::int32_t, Ue> ues_by_teid;
+    std::map<std::int32_t, Ue> ues_by_teid_dl;
+    std::map<std::int32_t, Ue> ues_by_teid_ul;
     std::map<std::string, Ue> ues_by_ip;
 
 public:
     UeStorage();
-    Ue *getByTeid(std::int32_t teid);
+    Ue *getByTeidDl(std::int32_t teid_dl);
+    Ue *getByTeidUl(std::int32_t teid_ul);
     Ue *getByIp(std::string ip);
 };
 }  // namespace ue

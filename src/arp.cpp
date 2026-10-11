@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <chrono>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <thread>
@@ -44,13 +45,13 @@ std::string ArpTableEntry::get_ip() const noexcept {
 
 ArpTable::ArpTable() {}
 
-std::array<std::uint8_t, 6> ArpTable::getMac(std::string ip) {
+std::optional<std::array<std::uint8_t, 6>> ArpTable::getMac(std::string ip) {
     auto elem = by_ip.find(ip);
     if (elem != by_ip.end() && !(*elem).second.expired()) {
         return (*elem).second.get_mac();
     }
     not_found.insert(ip);
-    // return "ERROR";  //!!!
+    return std::nullopt;
 }
 
 auto ArpTable::getNotFoundIps() const {
@@ -74,17 +75,19 @@ void ArpTable::create(std::array<std::uint8_t, 6> mac, std::string ip) {
     }
 }
 
-/*ArpHandler::ArpHandler(UeStorage _ue_storage, ArpTable _arp_table, /*??? dnSock)
+/*ArpHandler::ArpHandler(UeStorage _ue_storage, ArpTable _arp_table, ??? dnSock)
     //: ue_storage(_ue_storage), arp_table(_arp_table) {
-    /*update_loop = ???*//*
-}*/
+    update_loop = ???
+}
 
-/*void ArpHandler::run() {
-    while (true) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        tick();
-    }
-}*/
+
+
+    void ArpHandler::run() {
+        while (true) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            tick();
+        }
+    }*/
 
 void ArpHandler::tick() {}
 }  // namespace arp*/
