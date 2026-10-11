@@ -60,4 +60,4 @@ void ArpTable::create(std::array<std::uint8_t, 6> mac, std::string ip) {
     }
 }
 
-}  // namespace arp*/
+}  // namespace arp
