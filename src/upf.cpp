@@ -178,7 +178,11 @@ void Upf::start() {
     sockaddr_ll addr = {};
     addr.sll_family = AF_PACKET;
     addr.sll_protocol = htons(ETH_P_ALL);
-    addr.sll_ifindex = if_nametoindex("upf_cn_veth");  // maybe error
+    addr.sll_ifindex = if_nametoindex("upf_cn_veth");
+    if (addr.sll_ifindex == 0) {
+        std::cout << "Start: Incorrect interface name: " << "upf_cn_veth" << "\n";
+        return;
+    }
     sock_raw.bind(asio::generic::basic_endpoint<asio::generic::raw_protocol>(
         reinterpret_cast<sockaddr *>(&addr), sizeof(addr)));
 

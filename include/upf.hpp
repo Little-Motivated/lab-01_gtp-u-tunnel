@@ -1,5 +1,8 @@
 #pragma once
 
+#include "arp.hpp"
+#include "ue.hpp"
+
 #include <boost/asio.hpp>
 
 namespace asio = boost::asio;

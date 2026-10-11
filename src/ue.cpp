@@ -25,7 +25,7 @@ std::int32_t Ue::get_teid_ul() const noexcept {
 
 UeStorage::UeStorage() {
     for (int i = 1; i < 5; ++i) {
-        Ue ue(std::string("192.168.7.") + std::to_string(i), i * 2, i * 2 + 1);  // !!!
+        Ue ue(std::string("192.168.7.") + std::to_string(i), i * 2, i * 2 + 1);
         ues_by_teid_dl.emplace(ue.get_teid_dl(),
                                Ue(std::string("192.168.7.") + std::to_string(i), i * 2, i * 2 + 1));
         ues_by_teid_ul.emplace(ue.get_teid_ul(),
