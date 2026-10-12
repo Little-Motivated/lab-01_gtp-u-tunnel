@@ -26,7 +26,7 @@ private:
     void receiveRaw();
     void processRawPacket(std::uint8_t *data, std::size_t n);
     void receiveUdp();
-    void processUdpPacket(uint8_t *data, std::size_t bytes_received);
+    void processUdpPacket(std::uint8_t *data, std::size_t bytes_received);
     void arpTick();
     void sendArp();
 

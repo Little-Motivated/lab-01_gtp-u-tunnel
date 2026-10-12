@@ -64,7 +64,7 @@ void Upf::processRawPacket(std::uint8_t *data, std::size_t n) {
                 return;
             }
 
-            auto frame_sh = std::make_shared<std::array<uint8_t, 42UL>>(frame.value());
+            auto frame_sh = std::make_shared<std::array<std::uint8_t, 42UL>>(frame.value());
             sock_raw.async_send(
                 asio::buffer(*frame_sh),
                 [frame_sh](const boost::system::error_code &error_code, std::size_t) {
@@ -91,16 +91,17 @@ void Upf::processRawPacket(std::uint8_t *data, std::size_t n) {
             std::cout << "processRawPacket: There is no UE with this IP: " << ip.dst_ip << "\n";
             return;
         }
-        auto raw_data_sh = std::make_shared<std::vector<uint8_t>>(
+        auto raw_data_sh = std::make_shared<std::vector<std::uint8_t>>(
             gtpu::encodeGtpu(payload, ue->get_teid_dl(), payload_len));
 
         sock_udp.async_send_to(
             asio::buffer(*raw_data_sh), gnb_endpoint,
             [raw_data_sh](const boost::system::error_code &error_code, std::size_t) {
-                if (!error_code) {
-                    std::cout << "processRawPacket: Send GTPU to gNB\n";
+                if (error_code) {
+                    std::cout << error_code.message() << "\n";
+                    return;
                 }
-                std::cout << error_code.message() << "\n";
+                std::cout << "processRawPacket: Send GTPU to gNB\n";
             });
     }
 }
@@ -117,10 +118,10 @@ void Upf::receiveUdp() {
         });
 }
 
-void Upf::processUdpPacket(uint8_t *data, std::size_t bytes_received) {
-    uint8_t *payload = data + 8;
+void Upf::processUdpPacket(std::uint8_t *data, std::size_t bytes_received) {
+    std::uint8_t *payload = data + 8;
     std::size_t payload_len = bytes_received - 8;
-    uint32_t teid;
+    std::uint32_t teid;
     if (gtpu::decodeGtpu(data, bytes_received, teid, payload_len) != 0) {
         std::cout << "processUdpPacket: Invalid GTPU header\n";
         return;
@@ -140,7 +141,7 @@ void Upf::processUdpPacket(uint8_t *data, std::size_t bytes_received) {
     }
     net::EthHeader eth;
     net::build_eth(eth, mac.value(), UPF_MAC, ETH_P_IP);
-    auto raw_data_sh = std::make_shared<std::vector<uint8_t>>(raw(eth, payload, payload_len));
+    auto raw_data_sh = std::make_shared<std::vector<std::uint8_t>>(raw(eth, payload, payload_len));
     sock_raw.async_send(asio::buffer(*raw_data_sh),
                         [raw_data_sh](const boost::system::error_code &error_code, std::size_t) {
                             if (!error_code) {
@@ -174,7 +175,7 @@ void Upf::sendArp() {
             return;
         }
 
-        auto frame_shared = std::make_shared<std::array<uint8_t, 42UL>>(frame.value());
+        auto frame_shared = std::make_shared<std::array<std::uint8_t, 42UL>>(frame.value());
         sock_raw.async_send(
             asio::buffer(*frame_shared),
             [this, frame_shared, ip](const boost::system::error_code &error_code, std::size_t) {
