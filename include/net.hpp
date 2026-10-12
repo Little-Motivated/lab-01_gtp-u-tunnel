@@ -11,6 +11,7 @@
 
 const uint8_t ETH_HEADER_SIZE = 14;
 const uint8_t ARP_HEADER_SIZE = 28;
+const uint8_t ETH_ARP_HS = ETH_HEADER_SIZE + ARP_HEADER_SIZE;
 
 const std::array<std::uint8_t, 6> UPF_MAC = {0xbb, 0x00, 0x00, 0x00, 0x00, 0x01};
 const std::array<std::uint8_t, 6> BCAST_MAC = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
@@ -58,8 +59,7 @@ void build_eth(EthHeader &eth, const std::array<std::uint8_t, 6> &dst_mac,
 void build_arp(ArpHeader &arp, uint16_t opcode, const std::array<std::uint8_t, 6> &src_mac,
                const std::string &src_ip, const std::array<std::uint8_t, 6> &dst_mac,
                const std::string &dst_ip);
-std::array<std::uint8_t, ETH_HEADER_SIZE + ARP_HEADER_SIZE> raw(const EthHeader &eth,
-                                                                const ArpHeader &arp);
+std::optional<std::array<std::uint8_t, ETH_ARP_HS>> raw(const EthHeader &eth, const ArpHeader &arp);
 std::vector<uint8_t> raw(const EthHeader &eth, const uint8_t *payload, std::size_t payload_len);
 
 }  // namespace net

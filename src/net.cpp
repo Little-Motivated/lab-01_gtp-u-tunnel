@@ -8,6 +8,7 @@
 
 #include <array>
 #include <cstring>
+#include <optional>
 #include <vector>
 
 namespace net {
@@ -88,9 +89,9 @@ void build_arp(ArpHeader &arp, uint16_t opcode, const std::array<std::uint8_t, 6
     arp.dst_ip = dst_ip;
 }
 
-std::array<std::uint8_t, ETH_HEADER_SIZE + ARP_HEADER_SIZE> raw(const EthHeader &eth,
-                                                                const ArpHeader &arp) {
-    std::array<std::uint8_t, ETH_HEADER_SIZE + ARP_HEADER_SIZE> frame = {};
+std::optional<std::array<std::uint8_t, ETH_ARP_HS>> raw(const EthHeader &eth,
+                                                        const ArpHeader &arp) {
+    std::array<std::uint8_t, ETH_ARP_HS> frame = {};
     std::memcpy(frame.data(), eth.dst_mac.data(), 6);
     std::memcpy(frame.data() + 6, eth.src_mac.data(), 6);
     uint16_t ether_type = htons(eth.ether_type);
@@ -106,9 +107,13 @@ std::array<std::uint8_t, ETH_HEADER_SIZE + ARP_HEADER_SIZE> raw(const EthHeader 
     std::memcpy(frame.data() + 20, &opcode, 2);
 
     std::memcpy(frame.data() + 22, arp.src_mac.data(), 6);
-    inet_pton(AF_INET, arp.src_ip.data(), frame.data() + 28);  // maybe error
+    if (inet_pton(AF_INET, arp.src_ip.data(), frame.data() + 28) != 1) {
+        return std::nullopt;
+    }
     std::memcpy(frame.data() + 32, arp.dst_mac.data(), 6);
-    inet_pton(AF_INET, arp.dst_ip.data(), frame.data() + 38);  // maybe error
+    if (inet_pton(AF_INET, arp.dst_ip.data(), frame.data() + 38) != 1) {
+        return std::nullopt;
+    }
     return frame;
 }
 

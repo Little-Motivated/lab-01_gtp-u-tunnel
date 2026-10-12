@@ -57,7 +57,14 @@ void Upf::processRawPacket(std::uint8_t *data, std::size_t n) {
             net::build_arp(arp_reply, 2, UPF_MAC, arp.dst_ip, arp.src_mac, arp.src_ip);
             net::build_eth(eth_send, eth.src_mac, UPF_MAC, eth.ether_type);
 
-            auto frame_sh = std::make_shared<std::array<uint8_t, 42UL>>(raw(eth_send, arp_reply));
+            auto frame = raw(eth_send, arp_reply);
+            if (!frame.has_value()) {
+                std::cout << "processRawPacket: Failed to convert IP from string to binary form: "
+                          << arp.src_ip << " or " << arp.dst_ip << "\n";
+                return;
+            }
+
+            auto frame_sh = std::make_shared<std::array<uint8_t, 42UL>>(frame.value());
             sock_raw.async_send(
                 asio::buffer(*frame_sh),
                 [frame_sh](const boost::system::error_code &error_code, std::size_t) {
@@ -159,7 +166,15 @@ void Upf::sendArp() {
         net::EthHeader eth;
         net::build_arp(arp, 1, UPF_MAC, UPF_TO_DN_IP, BCAST_MAC, ip);
         net::build_eth(eth, BCAST_MAC, UPF_MAC, ETH_P_ARP);
-        auto frame_shared = std::make_shared<std::array<uint8_t, 42UL>>(raw(eth, arp));
+
+        auto frame = raw(eth, arp);
+        if (!frame.has_value()) {
+            std::cout << "processRawPacket: Failed to convert IP from string to binary form: "
+                      << arp.src_ip << " or " << arp.dst_ip << "\n";
+            return;
+        }
+
+        auto frame_shared = std::make_shared<std::array<uint8_t, 42UL>>(frame.value());
         sock_raw.async_send(
             asio::buffer(*frame_shared),
             [this, frame_shared, ip](const boost::system::error_code &error_code, std::size_t) {
